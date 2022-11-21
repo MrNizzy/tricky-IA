@@ -11,23 +11,147 @@ pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Tic Tac Toe AI")
 screen.fill( BACKGROUND_COLOR )
+music_list = [
+    "./assets/audio/NewsRoomNewsSpence.mp3",
+    "./assets/audio/RussianDance-JoeyPecoraro.mp3",
+    "./assets/audio/TakeMeDownToTheFashionShow-NoMBe.mp3",
+    "./assets/audio/HimnoDeLaAlegria.mp3"
+    ]
+bubble_sound = pygame.mixer.Sound("./assets/audio/bubble.mp3")
 
 class Board():
     def __init__(self):
         self.squares = np.zeros((ROWS, COLUMNS))
+        self.empty_squares = self.squares
+        self.marked_squares = 0
+
+    def finalState(self, row,col):
+        """
+        @return 0 if there was a draw.
+        @return 1 if player 1 wins
+        @return 2 if AI wins
+        """
+
+        # Vertical wins
+        for col in range(COLUMNS):
+            if self.squares[0][col] == self.squares[1][col] == self.squares[2][col] != 0:
+                return self.squares[0][col]
+
+        # Horizontal wins
+        for row in range(ROWS):
+            if self.squares[row][0] == self.squares[row][1] == self.squares[row][2] != 0:
+                return self.squares[row][0]
+
+        # Descending diagonal
+        if self.squares[0][0] == self.squares[1][1] == self.squares[2][2] != 0:
+            return self.squares[1][1]
+
+        # Ascending diagonal
+        if self.squares[2][0] == self.squares[1][1] == self.squares[0][2] != 0:
+            return self.squares[1][1]
+
+        # Draw
+        return 0
 
     def markSquare(self, row, col, player):
         self.squares[row][col] = player
+        self.marked_squares += 1
 
     def isEmptySquare(self, row, col):
         return self.squares[row][col] == 0
+
+    def getEmptySquares(self):
+        empty_squares = []
+        for row in range(ROWS):
+            for col in range(COLUMNS):
+                if self.isEmptySquare(row, col):
+                    empty_squares.append( (row,col) )
+        return empty_squares
+
+    def isFull(self):
+        return self.marked_squares == 100
+
+    def isEmpty(self):
+        return self.marked_squares == 0
+
+class AI():
+    def __init__(self, level=0, player=2):
+        self.level = level
+        self.player = player
+
+    def random(self, board):
+        empty_squares = board.getEmptySquares()
+        index = random.randrange(0, len(empty_squares))
+
+        return empty_squares[index] # (row,col)
+
+    def minimax(self, board, maximizing):
+        # Terminal case
+        case = board.finalState()
+
+        # Player 1 wins
+        if case == 1:
+            return 1, None # Eval, move
+
+        # Player 2 wins
+        if case == 2:
+            return -1, None
+        
+        # Draw
+        elif board.isFull():
+            return 0, None
+        
+        if maximizing:
+            max_eval = -100
+            best_move = None
+            empty_squares = board.getEmptySquares()
+
+            for(row,col) in empty_squares:
+                temp_board = copy.deepcopy(board)
+                temp_board.markSquare(row, col, 1)
+                eval = self.minimax(temp_board, False)[0]
+                if eval > max_eval:
+                    max_eval = eval
+                    best_move = (row, col)
+
+            return max_eval, best_move
+
+        elif not maximizing:
+            min_eval = 100
+            best_move = None
+            empty_squares = board.getEmptySquares()
+
+            for(row,col) in empty_squares:
+                temp_board = copy.deepcopy(board)
+                temp_board.markSquare(row, col, self.player)
+                eval = self.minimax(temp_board, True)[0]
+                if eval < min_eval:
+                    min_eval = eval
+                    best_move = (row, col)
+
+            return min_eval, best_move
+
+    def eval(self, main_board):
+        if self.level == 0:
+            # Random choice
+            eval = 'random'
+            move = self.random(main_board)
+        else:
+            # Minimax algorithm choice
+            eval, move = self.minimax(main_board, False)
+
+        print(f'AI has chosen to mark the square in pos {move} with an eval of: {eval}')
+
+        return move # row, col
 
 class Game:
 
     def __init__(self):
         self.board = Board()
-        # 1 Cross - 2 Circle
-        self.player = 1
+        self.ai = AI()
+        self.player = 1 # 1 Cross - 2 Circle
+        self.gameMode = "ai" # pvp or ai
+        self.running = True
         self.showLines()
 
     def showLines(self):
@@ -51,7 +175,9 @@ class Game:
             start_ascending = (col * SQUARE_SIZE + OFFSET, row * SQUARE_SIZE + SQUARE_SIZE - OFFSET)
             end_ascending = (col * SQUARE_SIZE + SQUARE_SIZE - OFFSET, row * SQUARE_SIZE + OFFSET)
             pygame.draw.line(screen, CROSS_COLOR, start_ascending, end_ascending, CROSS_WIDTH)
-            
+
+            pygame.mixer.Sound.play(bubble_sound)
+
         elif self.player == 2:
             # Draw circle
             center = ( col * SQUARE_SIZE + SQUARE_SIZE // 2, row * SQUARE_SIZE + SQUARE_SIZE // 2)
@@ -62,6 +188,11 @@ def main():
     # Object
     game = Game()
     board = game.board
+    ai = game.ai
+    music = random.choice(music_list)
+    pygame.mixer.music.load(music)
+    pygame.mixer.music.set_volume(0.2)
+    pygame.mixer.music.play(loops=-1)
 
     #MainLoop
     while(True):
@@ -79,6 +210,16 @@ def main():
                     board.markSquare(row, col, game.player)
                     game.drawFigure(row,col)
                     game.changePlayer()
+
+        if game.gameMode == 'ai' and game.player == ai.player:
+            pygame.display.update()
+
+            # AI methods
+            row, col = ai.eval(board)
+
+            board.markSquare(row, col, ai.player)
+            game.drawFigure(row,col)
+            game.changePlayer()
 
         pygame.display.update()
 
