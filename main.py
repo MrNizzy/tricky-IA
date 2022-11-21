@@ -43,8 +43,18 @@ class Board():
                         start_line = (j * SQUARE_SIZE + OFFSET_CENTER_2, i * SQUARE_SIZE + OFFSET_CENTER)
                         end_line = ((j+2) * SQUARE_SIZE + SQUARE_SIZE - OFFSET_CENTER_2, i * SQUARE_SIZE + OFFSET_CENTER)
                         pygame.draw.line(screen, LINE_CHECK_COLOR, start_line, end_line, LINE_CHECK_WIDTH)
-                    if i <= ROWS-3:
-                        if self.squares[i][j] == 1 and self.squares[i+1][j+1] == 1 and self.squares[i+2][j+2] ==1:
+                if i <= ROWS-3 and j >= 2:
+                        if self.squares[i][j] == 1 and self.squares[i+1][j-1] == 1 and self.squares[i+2][j-2] == 1:
+                            print("Toe diagonal invertida")
+                            print(i,j,i+1,j+1,i+2,j+2)
+                            self.squares[i][j] = 4
+                            self.squares[i+1][j-1] = 4
+                            self.squares[i+2][j-2] = 4
+                            start_line = (j * SQUARE_SIZE + OFFSET_CENTER, i * SQUARE_SIZE + OFFSET_CENTER)
+                            end_line = ((j-2) * SQUARE_SIZE + SQUARE_SIZE - OFFSET_CENTER, (i+2) * SQUARE_SIZE + OFFSET_CENTER)
+                            pygame.draw.line(screen, LINE_CHECK_COLOR, start_line, end_line, LINE_CHECK_WIDTH)
+                if i <= ROWS-3 and j <= COLUMNS-3:
+                    if self.squares[i][j] == 1 and self.squares[i+1][j+1] == 1 and self.squares[i+2][j+2] ==1:
                             print("Toe Diagonal")
                             self.squares[i][j] = 3
                             self.squares[i+1][j+1] = 3
@@ -52,15 +62,6 @@ class Board():
                             start_line = (j * SQUARE_SIZE + OFFSET_CENTER, i * SQUARE_SIZE + OFFSET_CENTER)
                             end_line = ((j+2) * SQUARE_SIZE + SQUARE_SIZE - OFFSET_CENTER, (i+2) * SQUARE_SIZE + OFFSET_CENTER)
                             pygame.draw.line(screen, LINE_CHECK_COLOR, start_line, end_line, LINE_CHECK_WIDTH)
-                if j >= 2:
-                    if self.squares[i][j] == 1 and self.squares[i+1][j-1] == 1 and self.squares[i+2][j-2] == 1:
-                        print("Toe diagonal invertida")
-                        self.squares[i][j] = 4
-                        self.squares[i+1][j-1] = 4
-                        self.squares[i+2][j-2] = 4
-                        start_line = (j * SQUARE_SIZE + OFFSET_CENTER, i * SQUARE_SIZE + OFFSET_CENTER)
-                        end_line = ((j-2) * SQUARE_SIZE + SQUARE_SIZE - OFFSET_CENTER, (i+2) * SQUARE_SIZE + OFFSET_CENTER)
-                        pygame.draw.line(screen, LINE_CHECK_COLOR, start_line, end_line, LINE_CHECK_WIDTH)
                 if i <= ROWS-3:
                     if self.squares[i][j] == 1 and self.squares[i+1][j] == 1 and self.squares[i+2][j] == 1:
                         print("Toe Vertical")
