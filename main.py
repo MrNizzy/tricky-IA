@@ -3,6 +3,7 @@ import copy
 import random
 import pygame
 import numpy as np
+import time
 
 from constants import *
 
@@ -18,61 +19,13 @@ music_list = [
     "./assets/audio/HimnoDeLaAlegria.mp3"
     ]
 bubble_sound = pygame.mixer.Sound("./assets/audio/bubble.mp3")
+bub_sound = pygame.mixer.Sound("./assets/audio/bub.mp3")
 
 class Board():
     def __init__(self):
         self.squares = np.zeros((ROWS, COLUMNS))
         self.empty_squares = self.squares
         self.marked_squares = 0
-
-    def finalState(self, row,col):
-        """
-        @return 0 if there was a draw.
-        @return 1 if player 1 wins
-        @return 2 if AI wins
-        """
-
-        for i in range(ROWS):
-            for j in range(COLUMNS):
-                if j <= COLUMNS-3:
-                    if self.squares[i][j] == 1 and self.squares[i][j+1] == 1 and self.squares[i][j+2] == 1:
-                        print("Toe horizontal")
-                        self.squares[i][j] = 2
-                        self.squares[i][j+1] = 2
-                        self.squares[i][j+2] = 2
-                        start_line = (j * SQUARE_SIZE + OFFSET_CENTER_2, i * SQUARE_SIZE + OFFSET_CENTER)
-                        end_line = ((j+2) * SQUARE_SIZE + SQUARE_SIZE - OFFSET_CENTER_2, i * SQUARE_SIZE + OFFSET_CENTER)
-                        pygame.draw.line(screen, LINE_CHECK_COLOR, start_line, end_line, LINE_CHECK_WIDTH)
-                if i <= ROWS-3 and j >= 2:
-                        if self.squares[i][j] == 1 and self.squares[i+1][j-1] == 1 and self.squares[i+2][j-2] == 1:
-                            print("Toe diagonal invertida")
-                            print(i,j,i+1,j+1,i+2,j+2)
-                            self.squares[i][j] = 4
-                            self.squares[i+1][j-1] = 4
-                            self.squares[i+2][j-2] = 4
-                            start_line = (j * SQUARE_SIZE + OFFSET_CENTER, i * SQUARE_SIZE + OFFSET_CENTER)
-                            end_line = ((j-2) * SQUARE_SIZE + SQUARE_SIZE - OFFSET_CENTER, (i+2) * SQUARE_SIZE + OFFSET_CENTER)
-                            pygame.draw.line(screen, LINE_CHECK_COLOR, start_line, end_line, LINE_CHECK_WIDTH)
-                if i <= ROWS-3 and j <= COLUMNS-3:
-                    if self.squares[i][j] == 1 and self.squares[i+1][j+1] == 1 and self.squares[i+2][j+2] ==1:
-                            print("Toe Diagonal")
-                            self.squares[i][j] = 3
-                            self.squares[i+1][j+1] = 3
-                            self.squares[i+2][j+2] = 3
-                            start_line = (j * SQUARE_SIZE + OFFSET_CENTER, i * SQUARE_SIZE + OFFSET_CENTER)
-                            end_line = ((j+2) * SQUARE_SIZE + SQUARE_SIZE - OFFSET_CENTER, (i+2) * SQUARE_SIZE + OFFSET_CENTER)
-                            pygame.draw.line(screen, LINE_CHECK_COLOR, start_line, end_line, LINE_CHECK_WIDTH)
-                if i <= ROWS-3:
-                    if self.squares[i][j] == 1 and self.squares[i+1][j] == 1 and self.squares[i+2][j] == 1:
-                        print("Toe Vertical")
-                        self.squares[i][j] = 5
-                        self.squares[i+1][j] = 5
-                        self.squares[i+2][j] = 5
-                        start_line = (j * SQUARE_SIZE + OFFSET_CENTER, i * SQUARE_SIZE + OFFSET_CENTER)
-                        end_line = (j * SQUARE_SIZE + SQUARE_SIZE - OFFSET_CENTER, (i+2) * SQUARE_SIZE + OFFSET_CENTER)
-                        pygame.draw.line(screen, LINE_CHECK_COLOR, start_line, end_line, LINE_CHECK_WIDTH)
-        # Draw
-        return 0
 
     def markSquare(self, row, col, player):
         self.squares[row][col] = player
@@ -171,6 +124,8 @@ class Game:
         self.board = Board()
         self.ai = AI()
         self.player = 1 # 1 Cross - 2 Circle
+        self.player1Score = 0
+        self.player2Score = 0
         self.gameMode = "ai" # pvp or ai
         self.running = True
         self.showLines()
@@ -184,6 +139,21 @@ class Game:
 
     def changePlayer(self):
         self.player = self.player % 2 + 1
+
+    def markPoint(self,player):
+        """
+        @player (int 1 - 2) The player who scored the point
+
+        If player 1 is playing, add 1 to player 1's score. If player 2 is playing, add 1 to player 2's
+        score
+        """
+        if player == 1:
+            self.player1Score += 1
+        elif player == 2:
+            self.player2Score += 1
+    
+    def printActualPoints(self):
+        print(self.player1Score,self.player2Score)
 
     def drawFigure(self, row, col):
         if self.player == 1:
@@ -203,6 +173,58 @@ class Game:
             # Draw circle
             center = ( col * SQUARE_SIZE + SQUARE_SIZE // 2, row * SQUARE_SIZE + SQUARE_SIZE // 2)
             pygame.draw.circle(screen, CIRCLE_COLOR, center, RADIUS, CIRCLE_WIDTH)
+
+            pygame.mixer.Sound.play(bub_sound)
+        
+    def finalState(self):
+        """
+        It checks if there are three consecutive squares with the same value (the player's value) in a
+        row, column or diagonal, and if so, it draws a line through them
+        """
+        for i in range(ROWS):
+            for j in range(COLUMNS):
+                if j <= COLUMNS-3:
+                    if self.board.squares[i][j] == self.player and self.board.squares[i][j+1] == self.player and self.board.squares[i][j+2] == self.player:
+                        self.board.squares[i][j] = 3
+                        self.board.squares[i][j+1] = 3
+                        self.board.squares[i][j+2] = 3
+                        self.markPoint(self.player) # Mark point
+                        start_line = (j * SQUARE_SIZE + OFFSET_CENTER_2, i * SQUARE_SIZE + OFFSET_CENTER)
+                        end_line = ((j+2) * SQUARE_SIZE + SQUARE_SIZE - OFFSET_CENTER_2, i * SQUARE_SIZE + OFFSET_CENTER)
+                        pygame.draw.line(screen, LINE_CHECK_COLOR, start_line, end_line, LINE_CHECK_WIDTH)
+
+                if i <= ROWS-3 and j >= 2:
+                        if self.board.squares[i][j] == self.player and self.board.squares[i+1][j-1] == self.player and self.board.squares[i+2][j-2] == self.player:
+                            print(i,j,i+1,j+1,i+2,j+2)
+                            self.board.squares[i][j] = 3
+                            self.board.squares[i+1][j-1] = 3
+                            self.board.squares[i+2][j-2] = 3
+                            self.markPoint(self.player) # Mark point
+                            start_line = (j * SQUARE_SIZE + OFFSET_CENTER, i * SQUARE_SIZE + OFFSET_CENTER)
+                            end_line = ((j-2) * SQUARE_SIZE + SQUARE_SIZE - OFFSET_CENTER, (i+2) * SQUARE_SIZE + OFFSET_CENTER)
+                            pygame.draw.line(screen, LINE_CHECK_COLOR, start_line, end_line, LINE_CHECK_WIDTH)
+
+                if i <= ROWS-3 and j <= COLUMNS-3:
+                    if self.board.squares[i][j] == self.player and self.board.squares[i+1][j+1] == self.player and self.board.squares[i+2][j+2] == self.player:
+                            print("Toe Diagonal")
+                            self.board.squares[i][j] = 3
+                            self.board.squares[i+1][j+1] = 3
+                            self.board.squares[i+2][j+2] = 3
+                            self.markPoint(self.player) # Mark point
+                            start_line = (j * SQUARE_SIZE + OFFSET_CENTER, i * SQUARE_SIZE + OFFSET_CENTER)
+                            end_line = ((j+2) * SQUARE_SIZE + SQUARE_SIZE - OFFSET_CENTER, (i+2) * SQUARE_SIZE + OFFSET_CENTER)
+                            pygame.draw.line(screen, LINE_CHECK_COLOR, start_line, end_line, LINE_CHECK_WIDTH)
+
+                if i <= ROWS-3:
+                    if self.board.squares[i][j] == self.player and self.board.squares[i+1][j] == self.player and self.board.squares[i+2][j] == self.player:
+                        print("Toe Vertical")
+                        self.board.squares[i][j] = 3
+                        self.board.squares[i+1][j] = 3
+                        self.board.squares[i+2][j] = 3
+                        self.markPoint(self.player) # Mark point
+                        start_line = (j * SQUARE_SIZE + OFFSET_CENTER, i * SQUARE_SIZE + OFFSET_CENTER)
+                        end_line = (j * SQUARE_SIZE + SQUARE_SIZE - OFFSET_CENTER, (i+2) * SQUARE_SIZE + OFFSET_CENTER)
+                        pygame.draw.line(screen, LINE_CHECK_COLOR, start_line, end_line, LINE_CHECK_WIDTH)
 
 def main():
 
@@ -230,6 +252,7 @@ def main():
                 if board.isEmptySquare(row, col):
                     board.markSquare(row, col, game.player)
                     game.drawFigure(row,col)
+                    game.finalState()
                     game.changePlayer()
 
         if game.gameMode == 'ai' and game.player == ai.player:
@@ -237,11 +260,12 @@ def main():
 
             # AI methods
             row, col = ai.eval(board)
-
+            time.sleep(1)
             board.markSquare(row, col, ai.player)
-            board.finalState(row,col)
             game.drawFigure(row,col)
+            game.finalState()
             game.changePlayer()
+            game.printActualPoints()
 
         pygame.display.update()
 
